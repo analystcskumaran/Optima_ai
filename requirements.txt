@@ -1,0 +1,10 @@
+streamlit
+pandas
+chardet
+scipy
+matplotlib
+seaborn
+sweetviz
+transformers
+torch
+pytest
