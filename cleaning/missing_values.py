@@ -1,12 +1,16 @@
-import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from utils.logger import log_event
 
+
 def handle_missing_values(df):
-    # Fill numeric with mean, categorical with mode
+    # Fill numeric with mean, categorical with mode or "Unknown".
     for col in df.columns:
-        if df[col].dtype in ['int64', 'float64']:
-            df[col].fillna(df[col].mean(), inplace=True)
+        if is_numeric_dtype(df[col]):
+            df[col] = df[col].fillna(df[col].mean())
         else:
-            df[col].fillna(df[col].mode()[0] if not df[col].mode().empty else 'Unknown', inplace=True)
+            mode = df[col].mode(dropna=True)
+            fallback = mode.iloc[0] if not mode.empty else "Unknown"
+            df[col] = df[col].fillna(fallback)
+
     log_event("Missing values handled")
     return df

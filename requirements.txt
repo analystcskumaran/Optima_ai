@@ -1,10 +1,9 @@
 streamlit
 pandas
+numpy
 chardet
 scipy
 matplotlib
 seaborn
 sweetviz
-transformers
-torch
 pytest
