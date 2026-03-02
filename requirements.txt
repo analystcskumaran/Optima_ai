@@ -1,0 +1,5 @@
+streamlit==1.42.0
+streamlit-shadcn-ui==0.1.19
+openai>=1.0.0
+pandas==2.2.0
+python-dotenv==1.0.1

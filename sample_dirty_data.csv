@@ -1,0 +1,11 @@
+id,name,email,age,city
+1,John Doe,john@example.com,28,New York
+2,Jane Smith,jane@example.com,34,London
+3,John Doe,john@example.com,28,New York
+4,Bob Brown,,45,Paris
+5,Alice Green,alice@gmail.com,abc,Berlin
+6,Charlie White,charlie@white.com,22,
+7,Eve Black,eve@black.com,-5,Tokyoo
+8,Frank Castle,frank@castle.com,150,Chicago
+9,,, , 
+10,Jane Smith,jane@example.com,34,London
