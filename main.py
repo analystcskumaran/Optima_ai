@@ -81,6 +81,35 @@ def get_api_key():
     load_dotenv(override=True)
     return os.getenv("OPENROUTER_API_KEY")
 
+# Local Preprocessing & Privacy
+def local_preprocess(df):
+    """Executes instant local cleaning before AI is involved."""
+    df_clean = df.copy()
+    # Remove 100% empty rows
+    df_clean.dropna(how='all', inplace=True)
+    # Remove 100% empty columns
+    df_clean.dropna(axis=1, how='all', inplace=True)
+    # Strip trailing whitespaces for string columns
+    str_cols = df_clean.select_dtypes(include=['object']).columns
+    for col in str_cols:
+         df_clean[col] = df_clean[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
+    return df_clean
+
+def get_safe_data_summary(df, sample_size=5):
+    """Redacts PII data (email, phone, name) before sending sample to AI."""
+    safe_df = df.head(sample_size).copy()
+    import re
+    pii_patterns = ['email', 'phone', 'name', 'address', 'ssn', 'credit', 'card', 'password']
+    
+    for col in safe_df.columns:
+        col_lower = col.lower()
+        if any(re.search(word, col_lower) for word in pii_patterns):
+             safe_df[col] = "[REDACTED]"
+             
+    data_summary = f"Columns: {df.columns.tolist()} \\nStats: {df.describe(include='all').to_json()} \\nSafe Sample: {safe_df.to_json()}"
+    return data_summary
+
+
 # Application Sidebar
 with st.sidebar:
     st.title("⚙️ Optima Settings")
@@ -125,11 +154,23 @@ st.markdown("<p style='color: #94a3b8; font-size: 1.2rem;'>AI-Powered CSV Cleani
 uploaded_file = st.file_uploader("Drop your dirty dataset here", type=['csv', 'xlsx'])
 
 if uploaded_file and client:
+    
+    # --- Reset State on New File Upload ---
+    if "current_file" not in st.session_state or st.session_state.current_file != uploaded_file.name:
+        st.session_state.current_file = uploaded_file.name
+        # Clear out previous AI runs/reports/chat
+        for key in ["diagnostic_report", "cleaned_df", "last_code", "messages", "approved_refinery"]:
+            if key in st.session_state:
+                del st.session_state[key]
+                
     try:
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
+            
+        # Apply Local Preprocessing automatically
+        df = local_preprocess(df)
             
         st.write("### Raw Data Preview")
         st.dataframe(df.head(5), use_container_width=True)
@@ -138,7 +179,7 @@ if uploaded_file and client:
             st.session_state.messages = []
 
         # Use tabs to separate AI tasks
-        tab1, tab2 = st.tabs(["📊 Data Refinery", "💬 Chat with AI"])
+        tab1, tab2, tab3 = st.tabs(["📊 Data Refinery", "🔍 Comparison View", "💬 Chat with AI"])
 
         with tab1:
             # --- PHASE 1: AI DIAGNOSTICS ---
@@ -147,10 +188,9 @@ if uploaded_file and client:
         # We need a session state to hold the generated code to prevent re-running on every interaction
         if "diagnostic_report" not in st.session_state:
             with st.spinner("Optima AI is analyzing data patterns..."):
-                # We send metadata + sample to Gemini 3.1 Pro
+                # We send metadata + safe sample to Gemini 3.1 Pro
                 # Limit the number of columns and rows we send to avoid token limits
-                sample_df = df.head(50)
-                data_summary = f"Columns: {df.columns.tolist()} \\nStats: {df.describe().to_json()}"
+                data_summary = get_safe_data_summary(df, sample_size=50)
                 
                 try:
                     response = client.chat.completions.create(
@@ -171,82 +211,95 @@ if uploaded_file and client:
 
         # --- PHASE 2: APPROVAL & CLEANING ---
         st.markdown("---")
+        
+        # We track if the button was ever pushed for this file
         if st.button("🚀 Approve & Refine Data"):
+            st.session_state.approved_refinery = True
             
-            with st.spinner("Optima AI is generating refinery code..."):
-                data_summary = f"Columns: {df.columns.tolist()} \nStats: {df.describe().to_json()} \nSample: {df.head(5).to_json()}"
-                report = st.session_state.get('diagnostic_report', 'No report generated.')
-                
-                prompt = f"""
-                You are a Python Data Scientist. Based on the diagnostic report below and the dataset summary, generate Python code using pandas to clean the dataframe `df`.
-                
-                Diagnostic Report:
-                {report}
-                
-                Dataset Summary:
-                {data_summary}
-                
-                Requirements:
-                1. The input dataframe is named `df`.
-                2. The final cleaned dataframe MUST be named `df_cleaned`.
-                3. Perform the 6-phase refinery: Structural, Semantic, Fuzzy, Forensic Audit, Imputation, and Verification (as much as possible in code).
-                4. Use `pd.to_numeric` with `errors='coerce'` for unit stripping and type forcing.
-                5. Use `IQR` method for outliers.
-                6. Handle missing values with median (for numbers) and mode (for categories).
-                7. Return ONLY the Python code inside a markdown code block. Do not include any explanations.
-                """
-                
-                try:
-                    response = client.chat.completions.create(
-                        model="stepfun/step-3.5-flash:free",
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    generated_code = response.choices[0].message.content
+        if st.session_state.get('approved_refinery', False):
+            
+            # Only run the AI code generation if we haven't already saved it
+            if "cleaned_df" not in st.session_state:
+                with st.spinner("Optima AI is generating refinery code..."):
+                    data_summary = get_safe_data_summary(df, sample_size=5)
+                    report = st.session_state.get('diagnostic_report', 'No report generated.')
                     
-                    # Extract code from markdown block
-                    import re
-                    code_match = re.search(r'```python\n(.*?)```', generated_code, re.DOTALL)
-                    if not code_match:
-                         code_match = re.search(r'```(.*?)```', generated_code, re.DOTALL)
+                    prompt = f"""
+                    You are a Python Data Scientist. Based on the diagnostic report below and the dataset summary, generate Python code using pandas to clean the dataframe `df`.
                     
-                    code_to_run = code_match.group(1) if code_match else generated_code
+                    Diagnostic Report:
+                    {report}
                     
-                    # Execute code safely (on a copy)
-                    exec_globals = {"df": df.copy(), "pd": pd}
-                    exec(code_to_run, exec_globals)
+                    Dataset Summary:
+                    {data_summary}
                     
-                    if "df_cleaned" in exec_globals:
-                        st.session_state.cleaned_df = exec_globals["df_cleaned"]
-                        st.session_state.last_code = code_to_run
-                    else:
-                        st.error("AI generated code but 'df_cleaned' was not found. Please try again.")
-                except Exception as e:
-                    st.error(f"Error during AI Refinery: {str(e)}")
-                    # Fallback to simple cleaning if AI fails
-                    st.session_state.cleaned_df = df.dropna().drop_duplicates()
-                
-            st.success("Refinery Process Complete! ✨")
-            if "last_code" in st.session_state:
-                with st.expander("Show AI-Generated Cleaning Code"):
-                    st.code(st.session_state.last_code, language='python')
+                    Requirements:
+                    1. The input dataframe is named `df`.
+                    2. The final cleaned dataframe MUST be named `df_cleaned`.
+                    3. Perform the 6-phase refinery: Structural, Semantic, Fuzzy, Forensic Audit, Imputation, and Verification (as much as possible in code).
+                    4. Use `pd.to_numeric` with `errors='coerce'` for unit stripping and type forcing.
+                    5. Use `IQR` method for outliers.
+                    6. Handle missing values with median (for numbers) and mode (for categories).
+                    7. Return ONLY the Python code inside a markdown code block. Do not include any explanations.
+                    """
+                    
+                    try:
+                        response = client.chat.completions.create(
+                            model="stepfun/step-3.5-flash:free",
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        generated_code = response.choices[0].message.content
+                        
+                        # Extract code from markdown block
+                        import re
+                        code_match = re.search(r'```python\n(.*?)```', generated_code, re.DOTALL)
+                        if not code_match:
+                             code_match = re.search(r'```(.*?)```', generated_code, re.DOTALL)
+                        
+                        code_to_run = code_match.group(1) if code_match else generated_code
+                        
+                        # Execute code safely (on a copy)
+                        exec_globals = {"df": df.copy(), "pd": pd}
+                        exec(code_to_run, exec_globals)
+                        
+                        if "df_cleaned" in exec_globals:
+                            st.session_state.cleaned_df = exec_globals["df_cleaned"]
+                            st.session_state.last_code = code_to_run
+                        else:
+                            st.error("AI generated code but 'df_cleaned' was not found. Please try again.")
+                    except Exception as e:
+                        st.error(f"Error during AI Refinery: {str(e)}")
+                        # Fallback to simple cleaning if AI fails
+                        st.session_state.cleaned_df = df.dropna().drop_duplicates()
+                    
+            if "cleaned_df" in st.session_state:
+                st.success("Refinery Process Complete! ✨")
+                if "last_code" in st.session_state:
+                    with st.expander("Show AI-Generated Cleaning Code"):
+                        st.code(st.session_state.last_code, language='python')
             
             # --- PHASE 6: Verification (Production Readiness) ---
             st.markdown("### 📊 Phase 6: Production Readiness Audit")
             
+            # FIX: Convert any accidental lists/objects into strings so .duplicated() works
+            temp_df = st.session_state.cleaned_df.copy()
+            for col in temp_df.columns:
+                # If a cell contains a list, join it into a string; otherwise leave it
+                temp_df[col] = temp_df[col].apply(lambda x: ", ".join(map(str, x)) if isinstance(x, list) else x)
+
             col1, col2, col3, col4 = st.columns(4)
             
             original_rows = len(df)
-            cleaned_rows = len(st.session_state.cleaned_df)
+            cleaned_rows = len(temp_df)
             rows_removed = original_rows - cleaned_rows
             
             original_nulls = df.isnull().sum().sum()
-            cleaned_nulls = st.session_state.cleaned_df.isnull().sum().sum()
+            cleaned_nulls = temp_df.isnull().sum().sum()
             nulls_fixed = original_nulls - cleaned_nulls
             
-            # Calculate Readiness Score (Simple heuristic)
-            # 100 - (percentage of issues remaining)
-            remaining_issues = cleaned_nulls + (st.session_state.cleaned_df.duplicated().sum())
-            readiness_score = max(0, 100 - int((remaining_issues / (len(st.session_state.cleaned_df) * len(st.session_state.cleaned_df.columns) + 1)) * 100))
+            # Now .duplicated() will work because temp_df contains no lists
+            remaining_issues = cleaned_nulls + (temp_df.duplicated().sum())
+            readiness_score = max(0, 100 - int((remaining_issues / (len(temp_df) * len(temp_df.columns) + 1)) * 100))
 
             with col1:
                 st.metric("Rows Processed", int(original_rows))
@@ -272,6 +325,27 @@ if uploaded_file and client:
             )
 
         with tab2:
+            st.subheader("🔍 Comparison View")
+            if "cleaned_df" in st.session_state:
+                st.markdown("Compare your original data with the refined data.")
+                col_orig, col_clean = st.columns(2)
+                
+                with col_orig:
+                    st.metric("Original Rows", len(df))
+                    st.metric("Original Columns", len(df.columns))
+                    with st.expander("View Original Data", expanded=True):
+                        st.dataframe(df.head(50), use_container_width=True)
+                        
+                with col_clean:
+                    cleaned_df = st.session_state.cleaned_df
+                    st.metric("Cleaned Rows", len(cleaned_df))
+                    st.metric("Cleaned Columns", len(cleaned_df.columns))
+                    with st.expander("View Cleaned Data", expanded=True):
+                        st.dataframe(cleaned_df.head(50), use_container_width=True)
+            else:
+                st.info("Run the Data Refinery first to see the comparison.")
+
+        with tab3:
             st.subheader("💬 Chat with AI Brain")
             st.caption("Ask questions about your data or give specific refinement instructions before downloading.")
             
@@ -289,27 +363,33 @@ if uploaded_file and client:
 
                 # Detailed context for the AI
                 active_df = st.session_state.cleaned_df if "cleaned_df" in st.session_state else df
+                dataset_state = 'Refined' if 'cleaned_df' in st.session_state else 'Raw'
+                
+                # Use safe summary for PII protection even in chat context
+                safe_summary = get_safe_data_summary(active_df, sample_size=10)
+                
                 data_info = {
-                    "columns": active_df.columns.tolist(),
                     "shape": active_df.shape,
                     "null_counts": active_df.isnull().sum().to_dict(),
-                    "dtypes": active_df.dtypes.astype(str).to_dict(),
-                    "sample": active_df.head(10).to_dict(),
-                    "summary_stats": active_df.describe(include='all').to_dict() if not active_df.empty else {}
+                    "dtypes": active_df.dtypes.astype(str).to_dict()
                 }
                 
                 context = f"""
                 You are Optima, an AI Data Assistant. You are chatting with a user about their dataset.
-                Current Dataset State: {'Refined' if 'cleaned_df' in st.session_state else 'Raw'}
+                Current Dataset State: {dataset_state}
                 
-                Data Properties:
-                {data_info}
+                Data Overview: 
+                Shape: {data_info['shape']}
+                Null Counts: {data_info['null_counts']}
+                Data Types: {data_info['dtypes']}
+                
+                Detailed Summary & Safe Sample:
+                {safe_summary}
                 
                 Instructions:
                 1. Answer questions accurately based on the data properties provided.
-                2. If the user asks for statistics (mean, median, etc.), use the summary_stats.
-                3. If the user asks about specific rows or values, refer to the sample.
-                4. Be concise and helpful.
+                2. Be concise and helpful.
+                3. The data sample provided is safe and has PII redacted. If the user asks about specific sensitive values (like an email), inform them that you only see redacted data to protect privacy.
                 """
                 
                 with st.spinner("Thinking..."):
