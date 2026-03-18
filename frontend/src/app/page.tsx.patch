@@ -1,0 +1,548 @@
+--- /home/santhosh/projects/optima/frontend/src/app/page.tsx
++++ /home/santhosh/projects/optima/frontend/src/app/page.tsx
+@@ -204,198 +204,166 @@
+ 
+   return (
+-    <main className="flex min-h-screen flex-col items-center p-8 bg-slate-950 relative overflow-hidden">
+-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-900/20 blur-[120px] pointer-events-none" />
+-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none" />
+-
+-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm">
+-        <div className="flex justify-between items-center mb-12">
+-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight">
+-            💎 Optima Data Refinery
+-          </h1>
+-          <div className="flex items-center gap-4">
+-            <span className="text-slate-400">
+-              {session.user.user_metadata.full_name || session.user.email}
+-            </span>
+-            <button
+-              onClick={signOut}
+-              className="text-slate-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+-            >
+-              Sign out
+-            </button>
+-          </div>
+-        </div>
+-
+-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+-          {/* Main Upload Area or Active Workspace */}
+-          {activeDataset ? (
+-            <div className="md:col-span-3 backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl shadow-2xl flex flex-col h-[80vh] overflow-hidden">
+-              {/* Header */}
+-              <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/20">
+-                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
+-                  <span className="text-2xl">📊</span> {activeDataset.fileName}
+-                  <span className="text-xs font-normal px-2 py-1 bg-emerald-900/40 text-emerald-400 rounded-md border border-emerald-800/50">
+-                    {activeDataset.shape[0].toLocaleString()} rows
+-                  </span>
+-                </h2>
+-                <button 
+-                  onClick={() => setActiveDataset(null)}
+-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg transition-colors"
+-                >
+-                  Close Data
+-                </button>
+-              </div>
+-              
+-              {/* Main Content Area: Split View */}
+-              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+-                
+-                {/* Left Side: Data Table Preview */}
+-                <div className="flex-1 p-6 border-r border-white/10 overflow-auto bg-black/10">
+-                  <h3 className="text-slate-300 font-medium mb-3 flex items-center justify-between">
+-                    <span>Data Profile (Sample)</span>
+-                  </h3>
+-                  
+-                  <div className="overflow-x-auto rounded-lg border border-white/10 bg-slate-900/50">
+-                    <table className="w-full text-sm text-left text-slate-300">
+-                      <thead className="text-xs text-slate-400 uppercase bg-black/40">
+-                        <tr>
+-                          {activeDataset.fingerprint.columns.slice(0, 8).map((col: string, i: number) => (
+-                            <th key={i} className="px-4 py-3 border-b border-white/5 whitespace-nowrap">{col}</th>
+-                          ))}
+-                          {activeDataset.fingerprint.columns.length > 8 && (
+-                            <th className="px-4 py-3 border-b border-white/5">...</th>
+-                          )}
+-                        </tr>
+-                      </thead>
+-                      <tbody>
+-                        {activeDataset.fingerprint.safe_sample.map((row: any, i: number) => (
+-                          <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+-                            {activeDataset.fingerprint.columns.slice(0, 8).map((col: string, j: number) => (
+-                              <td key={j} className="px-4 py-2 truncate max-w-[150px]">{String(row[col])}</td>
+-                            ))}
+-                            {activeDataset.fingerprint.columns.length > 8 && (
+-                               <td className="px-4 py-2 text-slate-500">...</td>
+-                            )}
+-                          </tr>
+-                        ))}
+-                      </tbody>
+-                    </table>
+-                  </div>
+-                </div>
+-
+-                {/* Right Side: Julius AI Style Chat */}
+-                <div className="w-full md:w-[450px] flex flex-col bg-slate-950/50">
+-                  {/* Chat Messages */}
+-                  <div className="flex-1 p-4 overflow-y-auto space-y-4">
+-                    {messages.map((msg, i) => (
+-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+-                        <div 
+-                          className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+-                            msg.role === 'user' 
+-                              ? 'bg-blue-600 text-white rounded-br-none' 
+-                              : 'bg-white/10 text-slate-200 border border-white/5 rounded-bl-none'
+-                          }`}
+-                        >
+-                          <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+-                        </div>
+-                      </div>
+-                    ))}
+-                    {isTyping && (
+-                      <div className="flex justify-start">
+-                        <div className="bg-white/10 border border-white/5 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1">
+-                          <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+-                          <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+-                          <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+-                        </div>
+-                      </div>
+-                    )}
+-                    <div ref={messagesEndRef} />
+-                  </div>
+-                  
+-                  {/* Chat Input Bar */}
+-                  <div className="p-4 bg-black/40 border-t border-white/10">
+-                    <form onSubmit={handleSendMessage} className="relative flex items-center">
+-                      <input 
+-                        type="text" 
+-                        value={chatInput}
+-                        onChange={(e) => setChatInput(e.target.value)}
+-                        placeholder="Ask AI to clean or analyze this data..."
+-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors placeholder:text-slate-500"
+-                        disabled={isTyping}
+-                      />
+-                      <button 
+-                        type="submit"
+-                        disabled={!chatInput.trim() || isTyping}
+-                        className="absolute right-2 p-2 bg-blue-600 hover:bg-blue-500 disabled:bg-transparent disabled:text-slate-500 text-white rounded-lg transition-colors"
+-                      >
+-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+-                        </svg>
+-                      </button>
+-                    </form>
+-                    <div className="mt-2 text-center flex justify-center gap-2">
+-                       <button onClick={() => setChatInput("Identify outliers in numeric columns")} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 rounded border border-white/5 transition-colors">Identify Outliers</button>
+-                       <button onClick={() => setChatInput("Clean missing values using median")} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-400 rounded border border-white/5 transition-colors">Handle Missing</button>
+-                    </div>
+-                  </div>
+-                </div>
+-              </div>
+-            </div>
+-          ) : (
+-            <div className="md:col-span-2 backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-8 shadow-2xl">
+-              <h2 className="text-xl font-semibold mb-6 text-white">
+-                Create New Workspace
+-              </h2>
+-  
+-              <div
+-                className={`border-2 border-dashed ${uploading ? 'border-blue-500/50 bg-blue-900/10' : 'border-slate-700/50 hover:bg-white/5'} rounded-xl p-12 text-center transition-colors`}
+-              >
+-                <input
+-                  type="file"
+-                  ref={fileInputRef}
+-                  onChange={handleFileUpload}
+-                  accept=".csv,.xlsx"
+-                  className="hidden"
+-                />
+-  
+-                <div className="flex justify-center mb-4">
+-                  {uploading ? (
+-                    <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+-                    </svg>
+-                  ) : (
+-                    <svg className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+-                    </svg>
+-                  )}
+-                </div>
+-  
+-                <p className="text-slate-300 md:text-lg mb-4">
+-                  {uploading ? "Analyzing dataset structures..." : "Drag and drop your CSV or Excel file here"}
+-                </p>
+-  
+-                {uploadStatus && (
+-                  <p className={`text-sm mt-2 mb-4 font-medium ${uploadStatus.isError ? 'text-red-400' : 'text-emerald-400'}`}>
+-                    {uploadStatus.msg}
+-                  </p>
+-                )}
+-  
+-                <button
+-                  onClick={() => fileInputRef.current?.click()}
+-                  disabled={uploading}
+-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+-                >
+-                  {uploading ? "Processing..." : "Browse Files"}
+-                </button>
+-              </div>
+-            </div>
+-          )}
+-
+-          {/* Recent Workspaces Sidebar */}
+-          <div className="backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-6 shadow-2xl">
+-            <h2 className="text-lg font-semibold mb-4 text-white">
+-              Recent Datasets
+-            </h2>
+-            <div className="space-y-3">
+-              <p className="text-slate-500 text-sm italic">
+-                No recent datasets found. Upload a file to start.
+-              </p>
+-            </div>
+-          </div>
+-        </div>
+-      </div>
+-    </main>
++    <div className="flex h-screen bg-[#0E0E10] text-[#ECECEC] font-sans overflow-hidden">
++      {/* Sidebar */}
++      <aside className="w-[260px] bg-[#0E0E10] flex flex-col border-r border-[#2A2A2A] flex-shrink-0">
++        <div className="p-4 flex items-center gap-2">
++          <div className="text-blue-500 font-bold text-xl tracking-tight">Julius</div>
++          <div className="flex-1" />
++          <button className="text-slate-400 hover:text-white transition-colors">
++             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
++          </button>
++        </div>
++        
++        <div className="px-3 pb-2 border-b border-[#2A2A2A]">
++          <button className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-white/5 border border-transparent hover:border-[#2A2A2A] rounded-lg text-sm transition-all drop-shadow-sm bg-[#18181A]">
++            <div className="flex items-center gap-2 overflow-hidden text-slate-300">
++              <div className="w-6 h-6 rounded bg-[#B18E7A] flex items-center justify-center text-xs font-semibold text-white">
++                {session?.user?.email?.[0].toUpperCase() || 'U'}
++              </div>
++              <span className="truncate flex-1 text-left text-xs font-medium">{session?.user?.email}</span>
++            </div>
++            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
++          </button>
++        </div>
++
++        <div className="flex-1 py-3 px-2 flex flex-col gap-1 overflow-y-auto">
++          <button className="w-full flex items-center gap-3 px-3 py-2 bg-[#202022] hover:bg-[#252528] text-white rounded-md text-sm font-medium transition-colors border border-white/5 shadow-sm">
++            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
++            New
++          </button>
++          
++          <div className="mt-2 space-y-0.5">
++            <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/5 text-slate-400 hover:text-slate-200 rounded-md text-sm transition-colors">
++              <div className="flex items-center gap-3 font-medium">
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
++                Chats
++              </div>
++              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
++            </button>
++            <button className="w-full flex items-center px-3 py-2 hover:bg-white/5 text-slate-400 hover:text-slate-200 rounded-md text-sm transition-colors">
++              <div className="flex items-center gap-3 font-medium">
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
++                Notebooks
++              </div>
++            </button>
++            <button className="w-full flex items-center px-3 py-2 hover:bg-white/5 text-slate-400 hover:text-slate-200 rounded-md text-sm transition-colors">
++              <div className="flex items-center gap-3 font-medium">
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
++                Files
++              </div>
++            </button>
++            <button className="w-full flex items-center px-3 py-2 hover:bg-white/5 text-slate-400 hover:text-slate-200 rounded-md text-sm transition-colors">
++              <div className="flex items-center gap-3 font-medium">
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
++                Data Connectors
++              </div>
++            </button>
++            <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/5 text-slate-400 hover:text-slate-200 rounded-md text-sm transition-colors">
++              <div className="flex items-center gap-3 font-medium">
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
++                Custom Agents
++              </div>
++            </button>
++          </div>
++        </div>
++
++        <div className="p-3 border-t border-[#2A2A2A]">
++           <div className="bg-[#1A1A1C] border border-[#2A2A2A] rounded-xl p-3 mb-3 hover:bg-[#202022] transition-colors cursor-pointer group relative">
++             <div className="flex items-center justify-between mb-1">
++               <span className="text-xs font-semibold text-slate-300 group-hover:text-white">Schedule your notebooks</span>
++               <svg className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
++             </div>
++             <p className="text-[10px] text-slate-500 leading-tight">
++               Set up your notebooks to run analysis for you on a recurring basis
++             </p>
++             <div className="mt-3 bg-white rounded flex items-center justify-between p-1 pl-2">
++                <span className="text-[10px] text-slate-700 font-medium">Share</span>
++                <div className="flex items-center gap-1.5 text-slate-400">
++                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
++                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
++                   <div className="bg-blue-600 rounded px-1.5 py-0.5 ml-1 text-[10px] text-white font-medium shadow-sm flex items-center gap-1">
++                     <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"></path></svg>
++                     Run All
++                   </div>
++                </div>
++             </div>
++             <div className="flex items-center justify-between mt-3 text-xs">
++               <span className="text-slate-500 hover:underline">Learn more</span>
++               <button className="px-2 py-1 text-slate-300 hover:text-white border border-[#2A2A2A] rounded">Get started</button>
++             </div>
++           </div>
++
++           <div className="bg-[#1A1A1C] border border-[#2A2A2A] rounded-xl p-3">
++             <div className="text-xs font-bold text-slate-200">5 messages left</div>
++             <div className="text-[10px] text-slate-500 mt-1">Upgrade for unlimited usage</div>
++             <button className="w-full mt-3 py-1.5 bg-[#252528] hover:bg-[#2A2A2A] border border-[#3A3A3A] transition-colors rounded text-xs text-slate-200 font-medium shadow-sm">
++               Upgrade
++             </button>
++           </div>
++           
++           <div className="mt-3 flex gap-2">
++              <button className="p-1 text-slate-500 hover:text-slate-300">
++                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
++              </button>
++           </div>
++        </div>
++      </aside>
++
++      {/* Main Content */}
++      <main className="flex-1 bg-[#161618] flex flex-col relative overflow-hidden">
++        <header className="px-4 py-3 flex items-center justify-between bg-transparent relative z-10 w-full">
++          <div className="flex items-center gap-2 text-emerald-500 text-[13px] font-medium cursor-pointer hover:text-emerald-400 transition-colors">
++            Brewing fresh compute
++            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
++          </div>
++          <div className="flex items-center gap-3 text-slate-400">
++             <button className="hover:text-white transition-colors">
++               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
++             </button>
++             <button className="hover:text-white transition-colors" onClick={signOut}>
++               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg>
++             </button>
++          </div>
++        </header>
++
++        {activeDataset ? (
++           <div className="flex-1 flex flex-col md:flex-row overflow-hidden absolute inset-0 pt-14">
++              {/* Left Side: Data Table Preview */}
++              <div className="flex-1 p-6 border-r border-[#2A2A2A] overflow-auto bg-[#161618]">
++                <div className="flex justify-between items-center mb-6">
++                  <div className="flex items-center gap-3">
++                     <h2 className="text-xl font-semibold text-white flex items-center gap-2">
++                       <span className="text-2xl">📊</span> {activeDataset.fileName}
++                     </h2>
++                     <span className="text-[10px] font-medium px-2 py-0.5 bg-[#1F2937] text-slate-300 rounded border border-[#374151]">
++                       {activeDataset.shape[0].toLocaleString()} rows • {activeDataset.shape[1].toLocaleString()} cols
++                     </span>
++                  </div>
++                  <button 
++                    onClick={() => setActiveDataset(null)}
++                    className="px-3 py-1.5 text-xs text-slate-400 hover:text-white border border-[#2A2A2A] hover:border-slate-500 rounded bg-[#1A1A1C] transition-colors"
++                  >
++                    Close
++                  </button>
++                </div>
++                
++                <div className="overflow-x-auto rounded-lg border border-[#2A2A2A] bg-black/40">
++                  <table className="w-full text-sm text-left text-slate-300">
++                    <thead className="text-[11px] text-slate-500 uppercase bg-[#1A1A1C] border-b border-[#2A2A2A]">
++                      <tr>
++                        {activeDataset.fingerprint.columns.slice(0, 8).map((col: string, i: number) => (
++                          <th key={i} className="px-4 py-2.5 whitespace-nowrap font-medium tracking-wider">{col}</th>
++                        ))}
++                        {activeDataset.fingerprint.columns.length > 8 && (
++                          <th className="px-4 py-2.5">...</th>
++                        )}
++                      </tr>
++                    </thead>
++                    <tbody>
++                      {activeDataset.fingerprint.safe_sample.map((row: any, i: number) => (
++                        <tr key={i} className="border-b border-[#2A2A2A]/50 hover:bg-[#202022] transition-colors">
++                          {activeDataset.fingerprint.columns.slice(0, 8).map((col: string, j: number) => (
++                            <td key={j} className="px-4 py-2 truncate max-w-[150px] text-xs">{String(row[col])}</td>
++                          ))}
++                          {activeDataset.fingerprint.columns.length > 8 && (
++                             <td className="px-4 py-2 text-slate-500">...</td>
++                          )}
++                        </tr>
++                      ))}
++                    </tbody>
++                  </table>
++                </div>
++              </div>
++
++              {/* Right Side: Julius AI Style Chat */}
++              <div className="w-full md:w-[450px] flex flex-col bg-[#161618]">
++                {/* Chat Messages */}
++                <div className="flex-1 p-5 overflow-y-auto space-y-6">
++                  {messages.map((msg, i) => (
++                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
++                      {msg.role === 'assistant' && (
++                         <div className="w-6 h-6 rounded flex-shrink-0 bg-blue-600/20 text-blue-500 flex items-center justify-center mr-3 mt-1">
++                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>
++                         </div>
++                      )}
++                      <div 
++                        className={`max-w-[85%] text-[13px] leading-relaxed ${
++                          msg.role === 'user' 
++                            ? 'bg-[#2B2B2B] text-[#ECECEC] px-4 py-2.5 rounded-2xl rounded-tr-sm shadow-sm' 
++                            : 'text-[#ECECEC] py-1'
++                        }`}
++                      >
++                        <p className="whitespace-pre-wrap">{msg.content}</p>
++                      </div>
++                    </div>
++                  ))}
++                  {isTyping && (
++                    <div className="flex justify-start">
++                      <div className="w-6 h-6 rounded flex-shrink-0 bg-blue-600/20 text-blue-500 flex items-center justify-center mr-3 mt-1">
++                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"></path></svg>
++                      </div>
++                      <div className="py-2.5 flex gap-1.5 items-center h-8">
++                        <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></div>
++                        <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
++                        <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
++                      </div>
++                    </div>
++                  )}
++                  <div ref={messagesEndRef} />
++                </div>
++                
++                {/* Active Chat Input Bar */}
++                <div className="p-4 bg-[#161618]">
++                  <form onSubmit={handleSendMessage} className="relative flex items-end bg-[#1A1A1C] border border-[#2A2A2A] rounded-xl focus-within:border-[#4A4A4A] transition-colors p-2 shadow-sm">
++                    <textarea 
++                      value={chatInput}
++                      onChange={(e) => setChatInput(e.target.value)}
++                      onKeyDown={(e) => {
++                         if (e.key === 'Enter' && !e.shiftKey) {
++                            e.preventDefault();
++                            handleSendMessage(e);
++                         }
++                      }}
++                      placeholder="Ask AI to clean or analyze this data..."
++                      className="w-full bg-transparent resize-none py-1.5 pl-2 pr-2 text-[13px] text-white focus:outline-none min-h-[40px] max-h-[150px] placeholder:text-slate-500"
++                      disabled={isTyping}
++                      rows={1}
++                    />
++                    <button 
++                      type="submit"
++                      disabled={!chatInput.trim() || isTyping}
++                      className="p-1.5 mb-0.5 bg-blue-600 hover:bg-blue-500 disabled:bg-[#2A2A2A] disabled:text-slate-500 text-white rounded-lg transition-colors ml-2 flex-shrink-0"
++                    >
++                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
++                      </svg>
++                    </button>
++                  </form>
++                </div>
++              </div>
++           </div>
++        ) : (
++          <div className="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-2xl mx-auto absolute inset-0 z-0">
++             <div className="flex items-center gap-2 text-xs mb-8 text-slate-400">
++               <span>Free plan</span>
++               <span className="text-[#2A2A2A]">|</span>
++               <span className="text-blue-500 hover:text-blue-400 transition-colors cursor-pointer">Upgrade to get full powers</span>
++             </div>
++
++             <h1 className="text-[28px] md:text-3xl font-semibold text-white mb-8 text-center tracking-tight">
++               What do you want to analyze today?
++             </h1>
++
++             {/* Central Upload / Chat Input */}
++             <div className="w-full bg-[#1A1A1C] border border-[#2A2A2A] rounded-2xl shadow-xl focus-within:border-[#4A4A4A] transition-colors">
++                <textarea 
++                  className="w-full bg-transparent px-4 py-4 text-[14px] text-white placeholder:text-slate-500 focus:outline-none min-h-[80px] resize-none"
++                  placeholder="Clean and transform my dataset..."
++                  value={chatInput}
++                  onChange={(e) => setChatInput(e.target.value)}
++                />
++                
++                <div className="px-3 pb-3 pt-1 flex justify-between items-center text-slate-400 border-t border-transparent">
++                   <div className="flex items-center gap-4">
++                     {/* Hidden file input */}
++                     <input
++                       type="file"
++                       ref={fileInputRef}
++                       onChange={handleFileUpload}
++                       accept=".csv,.xlsx"
++                       className="hidden"
++                     />
++                     
++                     <button className="flex items-center gap-1.5 hover:text-slate-300 transition-colors" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
++                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
++                        <span className="text-[11px] font-medium hidden sm:inline">Connectors</span>
++                        <svg className="w-3 h-3 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
++                     </button>
++                     
++                     <button className="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
++                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
++                        <span className="text-[11px] font-medium hidden sm:inline">Tools</span>
++                        <svg className="w-3 h-3 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
++                     </button>
++                     
++                     <button className="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
++                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
++                        <span className="text-[11px] font-medium hidden sm:inline">Agent</span>
++                        <svg className="w-3 h-3 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
++                     </button>
++                     
++                     <button className="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
++                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
++                        <span className="text-[11px] font-medium hidden sm:inline">Advanced Reasoning</span>
++                     </button>
++                   </div>
++
++                   {/* Submit Button (acting as upload trigger here if no text) */}
++                   <button 
++                     className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-colors shadow flex-shrink-0 disabled:opacity-50"
++                     onClick={() => !chatInput.trim() ? fileInputRef.current?.click() : null}
++                     disabled={uploading}
++                   >
++                     {uploading ? (
++                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
++                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
++                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
++                        </svg>
++                     ) : (
++                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
++                     )}
++                   </button>
++                </div>
++             </div>
++             
++             {uploadStatus && (
++                 <p className={`text-xs mt-3 ${uploadStatus.isError ? 'text-red-400' : 'text-emerald-400'}`}>
++                   {uploadStatus.msg}
++                 </p>
++             )}
++
++             {/* Action Buttons Below Input */}
++             <div className="flex gap-3 mt-6">
++                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-transparent border border-[#2A2A2A] hover:bg-[#1A1A1C] rounded text-[11px] font-medium text-slate-300 transition-colors">
++                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
++                   Start from a template
++                   <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
++                </button>
++                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-transparent border border-[#2A2A2A] hover:bg-[#1A1A1C] rounded text-[11px] font-medium text-slate-300 transition-colors">
++                   <span className="text-[#E01E5A] font-bold text-[13px] leading-none">#</span>
++                   Connect Slack
++                </button>
++                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-transparent border border-[#2A2A2A] hover:bg-[#1A1A1C] rounded text-[11px] font-medium text-slate-300 transition-colors">
++                   <span className="text-[#336791] font-bold text-[13px] leading-none">🐘</span>
++                   Connect Postgres
++                </button>
++             </div>
++          </div>
++        )}
++      </main>
++    </div>
+   );
+ }
