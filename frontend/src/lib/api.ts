@@ -123,12 +123,13 @@ export async function chat(
 export async function computeMetrics(
   filePath: string,
   targetColumn: string,
-  task: "classification" | "regression"
+  task: "classification" | "regression",
+  model?: string
 ): Promise<MetricsResponse> {
   const res = await fetch(`${BASE_URL}/api/metrics`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file_path: filePath, target_column: targetColumn, task }),
+    body: JSON.stringify({ file_path: filePath, target_column: targetColumn, task, model }),
   });
   return handleResponse<MetricsResponse>(res);
 }

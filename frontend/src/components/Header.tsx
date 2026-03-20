@@ -23,10 +23,10 @@ interface HeaderProps {
 }
 
 const MODELS = [
-  { value: "stepfun/step-3.5-flash:free", label: "StepFun 3.5 Flash" },
-  { value: "mistralai/mistral-small-3.1-24b-instruct:free", label: "Mistral Small 3.1" },
-  { value: "nvidia/nemotron-3-nano-30b-a3b:free", label: "Nemotron Nano 30B" },
-  { value: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron Super 120B" },
+  { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+  { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B" },
+  { value: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
+  { value: "gemma2-9b-it", label: "Gemma 2 9B" },
 ];
 
 export default function Header({ fileName, selectedModel, onModelChange, onMobileMenuToggle }: HeaderProps) {

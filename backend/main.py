@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from utils.data_profiler import load_and_preprocess, dataset_fingerprint
 from utils.ai_client import get_openrouter_client, plan_prompt, request_plan
 from core.cleaning_engine import clean_dataframe, EngineConfig
+from core.metrics_engine import evaluate_model
 
 # ── CONFIGURATION ──
 load_dotenv()
@@ -60,6 +61,12 @@ class ChatRequest(BaseModel):
     safe_summary: str
     model: str | None = None
     api_key: str | None = None
+
+class MetricsRequest(BaseModel):
+    file_path: str
+    target_column: str | None = ""
+    task: str | None = ""
+    model: str | None = ""
 
 # ── HELPERS ──
 def _generate_python_script(original_file_path: str, actions_applied: list, plan_actions: list) -> str:
@@ -178,9 +185,9 @@ def analyze_initial_file(req: AnalyzeInitRequest):
 def analyze_data(req: AnalyzeRequest):
     """Takes a dataset fingerprint and generates a cleaning plan via OpenRouter."""
     start_time = time.time()
-    api_key = req.api_key or os.getenv("OPENROUTER_API_KEY")
+    api_key = req.api_key or os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=401, detail="OpenRouter API Key required.")
+        raise HTTPException(status_code=401, detail="API Key required.")
     
     client = get_openrouter_client(api_key)
     prompt = plan_prompt(req.fingerprint)
@@ -198,16 +205,16 @@ def analyze_data(req: AnalyzeRequest):
 @app.post("/api/diagnose")
 def diagnose_data(req: AnalyzeRequest):
     """Generates an AI diagnostic report. Auto-retries with fallback models on rate-limit (429)."""
-    api_key = req.api_key or os.getenv("OPENROUTER_API_KEY")
+    api_key = req.api_key or os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=401, detail="OpenRouter API Key required.")
+        raise HTTPException(status_code=401, detail="API Key required.")
 
     # All free models — preferred first. If user selected one, try it first.
     ALL_MODELS = [
-        "stepfun/step-3.5-flash:free",
-        "mistralai/mistral-small-3.1-24b-instruct:free",
-        "nvidia/nemotron-3-nano-30b-a3b:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
     ]
     # Put the user's chosen model first in the retry queue
     preferred = req.model if req.model and req.model in ALL_MODELS else ALL_MODELS[0]
@@ -266,9 +273,9 @@ def diagnose_data(req: AnalyzeRequest):
 def clean_dataset(req: CleanRequest):
     """Generates a cleaning plan using AI, executes it on the dataset, and uploads the cleaned version."""
     start_time = time.time()
-    api_key = req.api_key or os.getenv("OPENROUTER_API_KEY")
+    api_key = req.api_key or os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=401, detail="OpenRouter API Key required.")
+        raise HTTPException(status_code=401, detail="API Key required.")
     
     client = get_openrouter_client(api_key)
     prompt = plan_prompt(req.fingerprint)
@@ -293,16 +300,15 @@ def clean_dataset(req: CleanRequest):
         base_name = os.path.splitext(os.path.basename(req.file_path))[0]
         cleaned_filename = f"{base_name}_cleaned.csv"
         cleaned_file_path = os.path.join(UPLOAD_DIR, cleaned_filename)
-        cleaned_df.to_csv(cleaned_file_path, index=False)
+        cleaned_df.to_csv(cleaned_file_path, index=False, encoding="utf-8")
         
         # 6. Build a reproducible Python script from executed actions
         actions_applied = report.get("actions_applied", [])
         python_script_content = _generate_python_script(req.file_path, actions_applied, plan.get("actions", []))
 
-        # Save the Python script to the uploads directory
         script_filename = f"{base_name}_cleaning_script.py"
         script_file_path = os.path.join(UPLOAD_DIR, script_filename)
-        with open(script_file_path, "w") as f:
+        with open(script_file_path, "w", encoding="utf-8") as f:
             f.write(python_script_content)
 
         return {
@@ -342,18 +348,18 @@ def download_report(filename: str):
 def chat_with_data(req: ChatRequest):
     """Streams a chat response based on the dataset profile and user prompt."""
     start_time = time.time()
-    api_key = req.api_key or os.getenv("OPENROUTER_API_KEY")
+    api_key = req.api_key or os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=401, detail="OpenRouter API Key required.")
+        raise HTTPException(status_code=401, detail="API Key required.")
     
     # Use the model the user selected, fall back to a default
     SUPPORTED_MODELS = [
-        "stepfun/step-3.5-flash:free",
-        "mistralai/mistral-small-3.1-24b-instruct:free",
-        "nvidia/nemotron-3-nano-30b-a3b:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
     ]
-    DEFAULT_MODEL = "stepfun/step-3.5-flash:free"
+    DEFAULT_MODEL = "llama-3.3-70b-versatile"
     model = req.model if req.model and req.model in SUPPORTED_MODELS else DEFAULT_MODEL
     
     client = get_openrouter_client(api_key)
@@ -387,3 +393,23 @@ def chat_with_data(req: ChatRequest):
         return {"reply": response.choices[0].message.content, "model_used": model}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Engine Error: {str(e)}")
+
+@app.post("/api/metrics")
+def compute_metrics(req: MetricsRequest):
+    """Trains a model and returns standard quality metrics."""
+    try:
+        # file_path in req might be just the filename if it was cleaned
+        # We need the full path in the uploads directory
+        full_path = req.file_path
+        if not os.path.isabs(full_path):
+            full_path = os.path.join(UPLOAD_DIR, req.file_path)
+            
+        results = evaluate_model(
+            file_path=full_path,
+            target_column=req.target_column,
+            model_name=req.model,
+            task=req.task
+        )
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Metrics Error: {str(e)}")

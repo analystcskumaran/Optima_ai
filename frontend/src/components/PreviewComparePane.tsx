@@ -118,10 +118,10 @@ export default function PreviewComparePane({ rawDataset, cleanedDataset, explana
   if (!cleanedDataset || !rawDataset) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 gap-3 text-center">
-        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-2xl">🔀</div>
-        <p className="text-[13px] font-semibold text-slate-300">No Comparison Available</p>
+        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-2xl">📊</div>
+        <p className="text-[13px] font-semibold text-slate-300">Dashboard Locked</p>
         <p className="text-[11px] text-slate-500 max-w-xs">
-          Click "Approve & Refine" in the Diagnosis tab to generate the cleaned dataset, then come back here to compare.
+          Click "Approve & Refine" in the Diagnosis tab to generate the cleaned dataset, then come back here to view the AI Work Dashboard.
         </p>
       </div>
     );

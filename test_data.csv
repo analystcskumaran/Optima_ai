@@ -1,0 +1,8 @@
+id,name,age,salary,department
+1,John Doe,28,60000,Engineering
+2,Jane Smith,,75000,Marketing
+3,Bob Jones,45,,Sales
+4,Alice Wong,32,80000,Engineering
+5,,29,55000,HR
+6,Tom Davis,38,,Marketing
+7,Emily Chen,,90000,Engineering

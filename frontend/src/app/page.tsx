@@ -43,7 +43,7 @@ import { DatasetFingerprint } from "@/lib/schemas";
 
 // ── Type definitions ──
 type Message = { role: "user" | "assistant"; content: string };
-type TabId = "diagnostics" | "plan" | "preview" | "metrics";
+type TabId = "diagnostics" | "plan" | "dashboard" | "metrics";
 type Dataset = {
   fileName: string;
   filePath: string;
@@ -103,7 +103,7 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cleanedDataset, setCleanedDataset] = useState<any | null>(null);
   const [isCleaning, setIsCleaning] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("mistralai/mistral-small-3.1-24b-instruct:free");
+  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
 
   // ── Close sidebar on mobile when dataset loads ──
   useEffect(() => {
@@ -124,6 +124,7 @@ export default function Home() {
       const updatedSessions = [...prev];
       updatedSessions[idx] = {
         ...updatedSessions[idx],
+        filePath: activeDataset.filePath,
         messages,
         diagnosticReport,
         cleanedDataset,
@@ -143,6 +144,7 @@ export default function Home() {
     const newSession: SessionRecord = {
       id: sessionId,
       fileName: dataset.fileName,
+      filePath: dataset.filePath,
       shape: dataset.shape,
       fingerprint: dataset.fingerprint,
       createdAt: new Date().toISOString(),
@@ -173,7 +175,7 @@ export default function Home() {
     // Reconstruct the dataset object from the stored session
     const dataset: Dataset = {
       fileName: session.fileName,
-      filePath: "",  // Backend file may be gone — we still have the fingerprint
+      filePath: session.filePath || "",
       shape: session.shape,
       fingerprint: session.fingerprint,
     };
@@ -197,7 +199,7 @@ export default function Home() {
     
     // Auto-switch to the most relevant tab
     if (session.cleanedDataset) {
-      setActiveTab("preview");
+      setActiveTab("dashboard");
     } else if (session.diagnosticReport) {
       setActiveTab("diagnostics");
     } else {
@@ -384,7 +386,7 @@ export default function Home() {
         explanation: data.explanation,
       };
       setCleanedDataset(finalCleanedDataset);
-      setActiveTab("preview");
+      setActiveTab("dashboard");
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: `✨ Dataset cleaned! ${data.message}\n\n${data.explanation ?? ""}` },
@@ -496,7 +498,7 @@ export default function Home() {
             }
             onUploadTrigger={() => document.getElementById("file-upload-input")?.click()}
             onClean={runRefinery}
-            onToggleDiff={() => setActiveTab("preview")}
+            onToggleDiff={() => setActiveTab("dashboard")}
           />
         ) : (
           /*
