@@ -20,7 +20,7 @@ import PreviewComparePane from "./PreviewComparePane";
 import MetricsPane from "./MetricsPane";
 import DownloadBar from "./DownloadBar";
 
-type TabId = "diagnostics" | "plan" | "preview" | "metrics";
+type TabId = "diagnostics" | "plan" | "dashboard" | "metrics";
 
 interface DataPanelProps {
   activeTab: TabId;
@@ -90,9 +90,9 @@ export default function DataPanel({
         className="flex items-center gap-0.5 px-3 border-b border-white/5 bg-[#0d1117] flex-shrink-0 overflow-x-auto"
       >
         <TabButton id="diagnostics" label="Diagnosis"  activeTab={activeTab} color="blue"    onClick={onTabChange} />
-        <TabButton id="plan"        label="Plan"        activeTab={activeTab} color="orange"  onClick={onTabChange} disabled={!isPostClean} badge={isPostClean ? "new" : undefined} />
-        <TabButton id="preview"     label="Preview ↔"   activeTab={activeTab} color="emerald" onClick={onTabChange} disabled={!isPostClean} />
-        <TabButton id="metrics"     label="Metrics"     activeTab={activeTab} color="violet"  onClick={onTabChange} disabled={!isPostClean} />
+        <TabButton id="plan"        label="Plan"        activeTab={activeTab} color="orange"  onClick={onTabChange} badge={isPostClean ? "new" : undefined} />
+        <TabButton id="dashboard"   label="Dashboard 📊" activeTab={activeTab} color="emerald" onClick={onTabChange} />
+        <TabButton id="metrics"     label="Metrics"     activeTab={activeTab} color="violet"  onClick={onTabChange} />
 
         {/* Spacer + Close button */}
         <div className="flex-1" />
@@ -222,8 +222,8 @@ export default function DataPanel({
           />
         )}
 
-        {/* ════ TAB: PREVIEW ════ */}
-        {activeTab === "preview" && (
+        {/* ════ TAB: DASHBOARD ════ */}
+        {activeTab === "dashboard" && (
           <PreviewComparePane
             rawDataset={activeDataset}
             cleanedDataset={cleanedDataset}

@@ -26,6 +26,7 @@ export type SessionRecord = {
   fileName: string;     // e.g. "sales_data.csv"
   shape: [number, number];   // [rows, cols]
   fingerprint: any;     // Full fingerprint to reload the session
+  filePath?: string;    // Backend storage path (e.g. uploads/uuid_file.csv)
   createdAt: string;    // ISO date string for display
   
   // Full session state for resuming

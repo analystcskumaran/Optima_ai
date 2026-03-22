@@ -4,17 +4,11 @@ from openai import OpenAI
 
 def get_openrouter_client(api_key: str) -> OpenAI:
     """
-    Initializes and returns the OpenRouter OpenAI-compatible client.
+    Initializes and returns the Groq OpenAI-compatible client.
     """
-    headers = {
-        "Authorization": f"Bearer {api_key.strip()}",
-        "HTTP-Referer": "http://localhost:8501",
-        "X-OpenRouter-Title": "Optima Data Refinery",
-    }
     return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key.strip(),
-        default_headers=headers
+        base_url="https://api.groq.com/openai/v1",
+        api_key=api_key.strip()
     )
 
 def plan_prompt(fingerprint: dict, max_steps: int = 15) -> str:
@@ -73,12 +67,14 @@ OUTPUT & EXPLANATION REQUIREMENTS
 Your outputs must include MULTIPLE PARTS:
 
 A. A structured JSON cleaning plan (in a markdown ```json block):
-   - Must contain a top-level "actions" list.
-   - Allowed types: "normalize_columns", "strip_whitespace", "drop_empty_rows", "drop_empty_cols", "deduplicate", "coerce_numeric", "parse_dates", "standardize_categories", "outliers_iqr", "drop_high_null_cols", "impute", "drop_columns", "extract_numeric", "regex_extract", "map_categories", "filter_range".
-   - Make sure JSON is perfectly valid. Max {max_steps} actions.
+   - You MUST provide a valid JSON object with an "actions" key.
+   - Each action in "actions" MUST have a "type" string from the allowed list: 
+     "normalize_columns", "strip_whitespace", "drop_empty_rows", "drop_empty_cols", "deduplicate", "coerce_numeric", "parse_dates", "standardize_categories", "outliers_iqr", "drop_high_null_cols", "impute", "drop_columns", "extract_numeric", "regex_extract", "map_categories", "filter_range".
+   - Each action should include a "params" object if applicable (e.g. "columns", "mapping", "pattern").
+   - DO NOT omit the JSON block. It is CRITICAL for the pipeline.
 
 B. A natural-language explanation (Julius-style):
-   - Describe what was wrong.
+   - Describe what was wrong in a professional, concise manner.
    - Explain cleaning choices clearly and simply.
    - Summarize the improvements made.
 
@@ -94,10 +90,10 @@ def request_plan(client: OpenAI, prompt: str) -> tuple[dict, str]:
     the JSON structural plan and the conversational explanation block.
     """
     ALL_MODELS = [
-        "stepfun/step-3.5-flash:free",
-        "mistralai/mistral-small-3.1-24b-instruct:free",
-        "nvidia/nemotron-3-nano-30b-a3b:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
     ]
     
     last_error = "Unknown error"
@@ -123,6 +119,13 @@ def request_plan(client: OpenAI, prompt: str) -> tuple[dict, str]:
                     
             plan = json.loads(plan_str)
             
+            # Filter actions to ensure they are valid objects and have a 'type'
+            if isinstance(plan, dict) and "actions" in plan and isinstance(plan["actions"], list):
+                plan["actions"] = [
+                    a for a in plan["actions"] 
+                    if isinstance(a, dict) and isinstance(a.get("type"), str) and a["type"].strip()
+                ]
+            
             # The explanation is everything OUTSIDE the markdown block
             explanation = re.sub(r"```(?:json)?\s*\{.*?\}\s*```", "", full_content, flags=re.DOTALL).strip()
             if not explanation:
@@ -139,35 +142,3 @@ def request_plan(client: OpenAI, prompt: str) -> tuple[dict, str]:
             
     # If all models failed to rate limit:
     raise RuntimeError(f"All free AI models are rate-limited. Last error: {last_error}")
-    
-    # Robustly extract JSON plan from the hybrid conversational/JSON response
-    match = re.search(r'```json\s*(.*?)\s*```', full_content, re.DOTALL)
-    if match:
-        json_str = match.group(1)
-    else:
-        match = re.search(r'```\s*(.*?)\s*```', full_content, re.DOTALL)
-        if match:
-            json_str = match.group(1)
-        else:
-            json_str = full_content
-            
-    # Cleanup extracted json
-    json_str = json_str.strip()
-    if json_str.startswith("```json"):
-        json_str = json_str[7:]
-    elif json_str.startswith("```"):
-        json_str = json_str.strip("`")
-    if json_str.endswith("```"):
-        json_str = json_str[:-3]
-        
-    try:
-        plan = json.loads(json_str.strip())
-    except json.JSONDecodeError:
-        # Fallback rudimentary plan if AI output drops JSON completely
-        plan = {"version": "1.0", "actions": [
-            {"type": "strip_whitespace", "columns": "object"},
-            {"type": "deduplicate"},
-            {"type": "impute", "numeric": "median", "categorical": "mode"}
-        ]}
-    
-    return plan, full_content

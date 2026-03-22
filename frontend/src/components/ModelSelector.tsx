@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * ModelSelector.tsx — OpenRouter Model Dropdown
+ * ModelSelector.tsx — Groq Model Dropdown
  *
- * PURPOSE: Lets the user pick which free OpenRouter AI model to use.
+ * PURPOSE: Lets the user pick which free Groq AI model to use.
  *   The selection is persisted in sessionStorage so it survives navigation
  *   but resets on a new tab.
  *
@@ -14,31 +14,31 @@
 
 export const FREE_MODELS = [
   {
-    id: "stepfun/step-3.5-flash:free",
-    label: "StepFun 3.5 Flash",
-    desc: "Fast & reliable — best for cleaning plans",
+    id: "llama-3.3-70b-versatile",
+    label: "Llama 3.3 70B",
+    desc: "Powerful reasoning — best for structured JSON plans",
     badge: "Recommended",
     color: "text-emerald-400",
   },
   {
-    id: "mistralai/mistral-small-3.1-24b-instruct:free",
-    label: "Mistral Small 3.1",
-    desc: "Strong reasoning for complex diagnostics",
-    badge: null,
+    id: "llama-3.1-8b-instant",
+    label: "Llama 3.1 8B",
+    desc: "Lightning fast — perfect for quick data chats",
+    badge: "Fast",
     color: "text-blue-400",
   },
   {
-    id: "nvidia/nemotron-3-nano-30b-a3b:free",
-    label: "Nemotron Nano 30B",
-    desc: "NVIDIA — good for structured JSON plans",
+    id: "mixtral-8x7b-32768",
+    label: "Mixtral 8x7B",
+    desc: "Strong capability with MoE architecture",
     badge: null,
     color: "text-purple-400",
   },
   {
-    id: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "Nemotron Super 120B",
-    desc: "Largest model — best quality, slower",
-    badge: "Powerful",
+    id: "gemma2-9b-it",
+    label: "Gemma 2 9B",
+    desc: "Google's open weight model — highly efficient",
+    badge: null,
     color: "text-orange-400",
   },
 ];
