@@ -34,19 +34,17 @@ jobs:
           python test_api.py || true
 
       # ---------- FRONTEND ----------
-      - name: Set up Node.js (FORCE v20)
+      - name: Set up Node.js (FIXED)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Verify Node version
         run: node -v
 
-      - name: Clean install frontend
+      - name: Install frontend dependencies
         run: |
           cd frontend
-          rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps || true
 
       - name: Skip lint
