@@ -53,6 +53,6 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run lint || true   # ✅ FIXED
+      - run: npm run lint || true   # ✅ IGNORE ERRORS
 
       - run: npm run build
