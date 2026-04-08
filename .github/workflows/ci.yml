@@ -13,7 +13,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: backend   # ✅ avoids repeating cd
+        working-directory: backend
 
     steps:
       - name: Checkout code
@@ -22,7 +22,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'   # ✅ fixed
+          python-version: '3.11'
+          check-latest: true   # ✅ force latest 3.11
+
+      - name: Verify Python version
+        run: python --version   # ✅ MUST show 3.11
 
       - name: Install dependencies
         run: |
@@ -45,7 +49,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: frontend   # ✅ avoids repeating cd
+        working-directory: frontend
 
     steps:
       - name: Checkout code
@@ -55,7 +59,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
